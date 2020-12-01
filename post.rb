@@ -23,7 +23,14 @@ class Post
     db = SQLite3::Database.open(SQLITE_DB_FILE)
 
     db.results_as_hash = true
-    result = db.execute('SELECT * FROM posts WHERE  rowid = ?', id)
+
+    begin
+      result = db.execute('SELECT * FROM posts WHERE  rowid = ?', id)
+    rescue SQLite3::SQLException => error
+      puts "Ошибка при запросе к базе данных #{SQLITE_DB_FILE}"
+      abort error.message
+    end
+
     db.close
 
     return nil if result.empty?
@@ -44,11 +51,22 @@ class Post
     query += 'ORDER by rowid DESC '
     query += 'LIMIT :limit ' unless limit.nil?
 
-    statement = db.prepare query
+    begin
+      statement = db.prepare query
+    rescue SQLite3::SQLException => error
+      puts "Ошибка при запросе к базе данных #{SQLITE_DB_FILE}"
+      abort error.message
+    end
+
     statement.bind_param('type', type) unless type.nil?
     statement.bind_param('limit', limit) unless limit.nil?
 
-    result = statement.execute!
+    begin
+      result = statement.execute!
+    rescue SQLite3::SQLException => error
+      puts "Ошибка при запросе к базе данных #{SQLITE_DB_FILE}"
+      abort error.message
+    end
 
     statement.close
     db.close
@@ -81,12 +99,17 @@ class Post
     db.results_as_hash = true
     post_hash = to_db_hash
 
-    db.execute(
-      'INSERT INTO posts (' +
-      post_hash.keys.join(', ') +
-      ") VALUES (#{('?,' * post_hash.size).chomp(',')})",
-      post_hash.values
-    )
+    begin
+      db.execute(
+        'INSERT INTO posts (' +
+        post_hash.keys.join(', ') +
+        ") VALUES (#{('?,' * post_hash.size).chomp(',')})",
+        post_hash.values
+      )
+    rescue SQLite3::SQLException => error
+      puts "Ошибка при запросе к базе данных #{SQLITE_DB_FILE}"
+      abort error.message
+    end
 
     insert_row_id = db.last_insert_row_id
 
